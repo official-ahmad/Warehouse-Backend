@@ -1,6 +1,6 @@
 const Product = require("../models/Product");
 
-// Add a new product
+
 exports.addProduct = async (req, res) => {
   try {
     const {
@@ -30,7 +30,7 @@ exports.addProduct = async (req, res) => {
   }
 };
 
-// Get all products with low stock check
+
 exports.getAllProducts = async (req, res) => {
   try {
     const products = await Product.find();
@@ -46,7 +46,7 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-// Get single product by SKU
+
 exports.getProductBySKU = async (req, res) => {
   try {
     const { sku } = req.params;

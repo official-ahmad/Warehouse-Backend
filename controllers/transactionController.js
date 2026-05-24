@@ -1,56 +1,46 @@
 const Transaction = require("../models/Transaction");
 const Product = require("../models/Product");
 
-// Create transaction and update product quantity
-exports.createTransaction = async (req, res) => {
-  const session = await Transaction.startSession();
-  session.startTransaction();
 
+exports.createTransaction = async (req, res) => {
   try {
     const { productId, type, quantity } = req.body;
 
-    // Validate product exists
-    const product = await Product.findById(productId).session(session);
+
+    const product = await Product.findById(productId);
     if (!product) {
-      await session.abortTransaction();
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // Validate transaction type
+
     if (!["IN", "OUT"].includes(type)) {
-      await session.abortTransaction();
       return res
         .status(400)
         .json({ error: "Transaction type must be IN or OUT" });
     }
 
-    // Check stock for OUT transactions
+
     if (type === "OUT" && product.quantity < quantity) {
-      await session.abortTransaction();
       return res.status(400).json({
         error: `Insufficient stock. Available: ${product.quantity}, Requested: ${quantity}`,
       });
     }
 
-    // Create transaction
+
     const transaction = new Transaction({
       productId,
       type,
       quantity,
     });
-    await transaction.save({ session });
+    await transaction.save();
 
-    // Update product quantity
+
     if (type === "IN") {
       product.quantity += quantity;
     } else if (type === "OUT") {
       product.quantity -= quantity;
     }
-    await product.save({ session });
-
-    // Commit transaction
-    await session.commitTransaction();
-    session.endSession();
+    await product.save();
 
     res.status(201).json({
       message: "Transaction created successfully",
@@ -58,13 +48,12 @@ exports.createTransaction = async (req, res) => {
       updatedQuantity: product.quantity,
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    console.error("Transaction error:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get all transactions
+
 exports.getAllTransactions = async (req, res) => {
   try {
     const transactions = await Transaction.find().populate(
@@ -77,7 +66,7 @@ exports.getAllTransactions = async (req, res) => {
   }
 };
 
-// Get transactions by product ID
+
 exports.getTransactionsByProduct = async (req, res) => {
   try {
     const { productId } = req.params;
