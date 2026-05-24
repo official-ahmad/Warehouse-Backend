@@ -15,7 +15,7 @@ app.use(express.json());
 // MongoDB Connection
 mongoose
   .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/warehouse")
-  .then(() => console.log("MongoDB connected"))
+  .then(() => console.log("DB Connected Successfully!"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // Routes
