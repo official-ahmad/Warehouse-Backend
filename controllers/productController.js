@@ -1,5 +1,5 @@
 const Product = require("../models/Product");
-
+const Transaction = require("../models/Transaction");
 
 exports.addProduct = async (req, res) => {
   try {
@@ -30,10 +30,9 @@ exports.addProduct = async (req, res) => {
   }
 };
 
-
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find({ deletedAt: null });
 
     const productsWithStockStatus = products.map((product) => ({
       ...product.toObject(),
@@ -45,7 +44,6 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 exports.getProductBySKU = async (req, res) => {
   try {
@@ -62,6 +60,66 @@ exports.getProductBySKU = async (req, res) => {
     };
 
     res.status(200).json(productWithStatus);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findByIdAndUpdate(
+      id,
+      { deletedAt: new Date() },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.status(200).json({ message: "Product deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+exports.getProductHistory = async (req, res) => {
+  try {
+    const deletedProducts = await Product.find({ deletedAt: { $ne: null } });
+
+    const history = await Promise.all(
+      deletedProducts.map(async (product) => {
+        const transactions = await Transaction.find({
+          productId: product._id,
+        });
+
+        const quantityIn = transactions
+          .filter((t) => t.type === "IN")
+          .reduce((sum, t) => sum + t.quantity, 0);
+
+        const quantityOut = transactions
+          .filter((t) => t.type === "OUT")
+          .reduce((sum, t) => sum + t.quantity, 0);
+
+        const revenue = quantityOut * product.price;
+
+        return {
+          _id: product._id,
+          name: product.name,
+          SKU: product.SKU,
+          createdAt: product.createdAt,
+          deletedAt: product.deletedAt,
+          quantityIn,
+          quantityOut,
+          revenue,
+          totalTransactions: transactions.length,
+        };
+      })
+    );
+
+    res.status(200).json(history);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

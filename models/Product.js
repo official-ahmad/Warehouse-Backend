@@ -32,6 +32,10 @@ const productSchema = new mongoose.Schema(
       required: true,
       default: 10,
     },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );
