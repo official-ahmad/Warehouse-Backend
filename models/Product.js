@@ -27,10 +27,22 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    costPrice: {
+      type: Number,
+      default: 0,
+    },
     lowStockThreshold: {
       type: Number,
       required: true,
       default: 10,
+    },
+    reorderQuantity: {
+      type: Number,
+      default: 0,
+    },
+    expiryDate: {
+      type: Date,
+      default: null,
     },
     deletedAt: {
       type: Date,
