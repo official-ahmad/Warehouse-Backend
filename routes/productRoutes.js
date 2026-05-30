@@ -10,6 +10,8 @@ router.get("/history/deleted", productController.getProductHistory);
 
 router.get("/:sku", productController.getProductBySKU);
 
+router.put("/:id", productController.updateProduct);
+
 router.delete("/:id", productController.deleteProduct);
 
 module.exports = router;

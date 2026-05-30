@@ -1,5 +1,6 @@
 const Product = require("../models/Product");
 const Transaction = require("../models/Transaction");
+const ActivityLog = require("../models/ActivityLog");
 
 exports.addProduct = async (req, res) => {
   try {
@@ -10,8 +11,18 @@ exports.addProduct = async (req, res) => {
       category,
       quantity,
       price,
+      costPrice,
       lowStockThreshold,
+      reorderQuantity,
+      expiryDate,
     } = req.body;
+
+    if (price !== undefined && price < 0) {
+      return res.status(400).json({ error: "Price cannot be negative" });
+    }
+    if (quantity !== undefined && quantity < 0) {
+      return res.status(400).json({ error: "Quantity cannot be negative" });
+    }
 
     const product = new Product({
       name,
@@ -20,10 +31,22 @@ exports.addProduct = async (req, res) => {
       category,
       quantity,
       price,
+      costPrice,
       lowStockThreshold,
+      reorderQuantity,
+      expiryDate,
     });
 
     await product.save();
+
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: "PRODUCT_CREATED",
+      entityType: "Product",
+      entityId: product._id,
+      changes: { name, SKU, category, quantity, price },
+    });
+
     res.status(201).json({ message: "Product added successfully", product });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -78,8 +101,65 @@ exports.deleteProduct = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: "PRODUCT_DELETED",
+      entityType: "Product",
+      entityId: product._id,
+      changes: { name: product.name, SKU: product.SKU },
+    });
+
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    if (updates.price !== undefined && updates.price < 0) {
+      return res.status(400).json({ error: "Price cannot be negative" });
+    }
+    if (updates.quantity !== undefined && updates.quantity < 0) {
+      return res.status(400).json({ error: "Quantity cannot be negative" });
+    }
+
+    const product = await Product.findById(id);
+    if (!product || product.deletedAt) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const changes = {};
+    const allowedFields = [
+      "name", "description", "SKU", "category", "quantity",
+      "price", "costPrice", "lowStockThreshold", "reorderQuantity", "expiryDate",
+    ];
+
+    allowedFields.forEach((key) => {
+      if (updates[key] !== undefined && String(product[key]) !== String(updates[key])) {
+        changes[key] = { from: product[key], to: updates[key] };
+        product[key] = updates[key];
+      }
+    });
+
+    await product.save();
+
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: "PRODUCT_UPDATED",
+      entityType: "Product",
+      entityId: product._id,
+      changes,
+    });
+
+    res.status(200).json({ message: "Product updated successfully", product });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: "SKU already exists" });
+    }
     res.status(500).json({ error: error.message });
   }
 };

@@ -1,5 +1,6 @@
 const Transaction = require("../models/Transaction");
 const Product = require("../models/Product");
+const ActivityLog = require("../models/ActivityLog");
 
 
 exports.createTransaction = async (req, res) => {
@@ -41,6 +42,20 @@ exports.createTransaction = async (req, res) => {
       product.quantity -= quantity;
     }
     await product.save();
+
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: type === "IN" ? "STOCK_ADDED" : "STOCK_REMOVED",
+      entityType: "Product",
+      entityId: productId,
+      changes: {
+        type,
+        quantity,
+        productName: product.name,
+        previousQuantity: type === "IN" ? product.quantity - quantity : product.quantity + quantity,
+        newQuantity: product.quantity,
+      },
+    });
 
     res.status(201).json({
       message: "Transaction created successfully",
