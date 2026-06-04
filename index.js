@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const productRoutes = require("./routes/productRoutes");
 const transactionRoutes = require("./routes/transactionRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const activityLogRoutes = require("./routes/activityLogRoutes");
@@ -27,6 +28,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/activity-logs", activityLogRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/products", authMiddleware, productRoutes);
 app.use("/api/transactions", authMiddleware, transactionRoutes);
 
