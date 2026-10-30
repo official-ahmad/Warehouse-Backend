@@ -3,6 +3,21 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const ActivityLog = require("../models/ActivityLog");
 
+const normalizeEmail = (email) => email?.trim().toLowerCase();
+
+const validatePassword = (password) => {
+  if (typeof password !== "string" || password.length < 12) {
+    return "Password must be at least 12 characters long";
+  }
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password)) {
+    return "Password must include uppercase and lowercase letters";
+  }
+  if (!/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    return "Password must include a number and a special character";
+  }
+  return null;
+};
+
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, email: user.email, role: user.role },
@@ -13,10 +28,16 @@ const generateToken = (user) => {
 
 exports.register = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role } = req.body;
+    const { password, firstName, lastName, role } = req.body;
+    const email = normalizeEmail(req.body.email);
 
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const existingUser = await User.findOne({ email });
@@ -59,7 +80,8 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = normalizeEmail(req.body.email);
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password required" });
@@ -105,6 +127,55 @@ exports.login = async (req, res) => {
       });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ error: "Current and new passwords are required" });
+    }
+
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user || !user.isActive) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(
+      currentPassword,
+      user.passwordHash,
+    );
+    if (!currentPasswordMatches) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    if (currentPassword === newPassword) {
+      return res
+        .status(400)
+        .json({ error: "New password must be different" });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    await ActivityLog.create({
+      userId: user._id,
+      action: "PASSWORD_CHANGED",
+      entityType: "User",
+      entityId: user._id,
+    });
+
+    return res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 

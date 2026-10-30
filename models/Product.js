@@ -9,6 +9,15 @@ const productSchema = new mongoose.Schema(
     description: {
       type: String,
     },
+    brand: { type: String, default: "" },
+    barcode: { type: String, default: "" },
+    supplier: { type: String, default: "" },
+    unit: { type: String, default: "pcs" },
+    location: { type: String, default: "" },
+    bin: { type: String, default: "" },
+    batchNumber: { type: String, default: "" },
+    weight: { type: Number, default: null },
+    dimensions: { type: String, default: "" },
     SKU: {
       type: String,
       required: true,

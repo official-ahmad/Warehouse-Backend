@@ -6,6 +6,12 @@ const User = require("./models/User");
 
 async function seedAdminUser() {
   try {
+    if (!process.env.ADMIN_SEED_PASSWORD) {
+      throw new Error(
+        "ADMIN_SEED_PASSWORD must be set before running the admin seed",
+      );
+    }
+
     await mongoose.connect(
       process.env.MONGODB_URI || "mongodb://localhost:27017/warehouse",
     );
@@ -16,7 +22,7 @@ async function seedAdminUser() {
     if (adminExists) {
       console.log("✅ Admin user already exists");
     } else {
-      const passwordHash = await bcrypt.hash("Admin@123", 10);
+      const passwordHash = await bcrypt.hash(process.env.ADMIN_SEED_PASSWORD, 12);
 
       const adminUser = new User({
         email: "admin@warehouse.com",
@@ -30,7 +36,7 @@ async function seedAdminUser() {
       await adminUser.save();
       console.log("✅ Admin user created successfully");
       console.log("📧 Email: admin@warehouse.com");
-      console.log("🔑 Password: Admin@123");
+      console.log("🔑 Password: supplied through ADMIN_SEED_PASSWORD");
     }
 
     await mongoose.connection.close();

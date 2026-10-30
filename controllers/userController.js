@@ -2,6 +2,19 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const ActivityLog = require("../models/ActivityLog");
 
+const validatePassword = (password) => {
+  if (typeof password !== "string" || password.length < 12) {
+    return "Password must be at least 12 characters long";
+  }
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password)) {
+    return "Password must include uppercase and lowercase letters";
+  }
+  if (!/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    return "Password must include a number and a special character";
+  }
+  return null;
+};
+
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find({ isActive: true }).select("-passwordHash");
@@ -28,7 +41,8 @@ exports.getUserById = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role, department } = req.body;
+    const { password, firstName, lastName, role, department } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (!email || !password || !firstName || !lastName) {
       return res
@@ -36,6 +50,11 @@ exports.createUser = async (req, res) => {
         .json({
           error: "Email, password, firstName, and lastName are required",
         });
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const existingUser = await User.findOne({ email });
