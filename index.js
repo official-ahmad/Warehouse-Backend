@@ -30,8 +30,13 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: "100kb" }));
 
+const mongoUri =
+  process.env.MONGODB_URI ||
+  process.env.MONGO_URI ||
+  "mongodb://localhost:27017/warehouse";
+
 mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/warehouse")
+  .connect(mongoUri)
   .then(() => console.log("DB Connected Successfully!"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
